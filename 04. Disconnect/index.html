@@ -1,0 +1,64 @@
+<main>
+  <section>
+    <form data-simply-command="connect">
+      <label>
+        <input name="issuer" type="text" value="https://solidcommunity.net">
+      </label>
+      <button>Connect</button>
+    </form>
+
+    <button data-simply-command="disconnect">Disconnect</button>
+  </section>
+
+  <section>
+    <h2>Session Data</h2>
+    <p>Session ID: <span data-simply-field="session.info.sessionId"></span></p>
+    <p>Logged in: <span data-simply-field="session.info.isLoggedIn"></span></p>
+  </section>
+</main>
+
+<script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
+<script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
+<script type="module">
+  import {
+    getDefaultSession,
+    login,
+  } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser"
+
+  const defaultSession = getDefaultSession()
+
+  const solidApp = simply.app({
+    actions: {
+      connect: (session, issuer) => {
+        if (session.info && session.info.isLoggedIn === false) {
+          return login({
+            oidcIssuer: issuer,
+            redirectUrl: window.location.href,
+          })
+        }
+
+        return session.info
+      },
+      disconnect: session => session.logout()
+    },
+    commands: {
+      connect: (form, values) => {
+        solidApp.actions.connect(session, values.issuer)
+          .then(sessionInfo => {
+            console.log(sessionInfo)
+          })
+          .catch(error => {
+            console.error(error)
+          })
+      },
+      disconnect: () => {
+        solidApp.actions.disconnect(session)
+      }
+    },
+    view: {
+      session: defaultSession
+    }
+  })
+
+  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+</script>
