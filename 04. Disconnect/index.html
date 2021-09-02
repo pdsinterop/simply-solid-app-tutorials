@@ -23,7 +23,7 @@
   import {
     getDefaultSession,
     login,
-  } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser"
+  } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
 
   const defaultSession = getDefaultSession()
 
@@ -42,18 +42,8 @@
       disconnect: session => session.logout()
     },
     commands: {
-      connect: (form, values) => {
-        solidApp.actions.connect(session, values.issuer)
-          .then(sessionInfo => {
-            console.log(sessionInfo)
-          })
-          .catch(error => {
-            console.error(error)
-          })
-      },
-      disconnect: () => {
-        solidApp.actions.disconnect(session)
-      }
+      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
+      disconnect: () => solidApp.actions.disconnect(solidApp.view.session),
     },
     view: {
       session: defaultSession

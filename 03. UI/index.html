@@ -1,10 +1,18 @@
 <main>
-  <form data-simply-command="connect">
-    <label>
-      <input name="issuer" type="text" value="https://solidcommunity.net">
-    </label>
-    <button>Connect</button>
-  </form>
+  <section>
+    <form data-simply-command="connect">
+      <label>
+        <input name="issuer" type="text" value="https://solidcommunity.net">
+      </label>
+      <button>Connect</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Session Data</h2>
+    <p>Session ID: <span data-simply-field="session.info.sessionId"></span></p>
+    <p>Logged in: <span data-simply-field="session.info.isLoggedIn"></span></p>
+  </section>
 </main>
 
 <script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
@@ -13,33 +21,30 @@
   import {
     getDefaultSession,
     login,
-  } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser"
+  } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
+
+  const defaultSession = getDefaultSession()
 
   const solidApp = simply.app({
     actions: {
-      connect : (issuer) => getDefaultSession()
-        .handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
-        .then(sessionInfo => {
-          if ( ! sessionInfo.isLoggedIn) {
+      connect: (session, issuer) => {
+        if (session.info && session.info.isLoggedIn === false) {
             return login({
               oidcIssuer: issuer,
               redirectUrl: window.location.href,
             })
           }
 
-          return sessionInfo
-        })
+          return session.info
+        },
     },
     commands: {
-      connect: (form, values) => {
-        solidApp.actions.connect(values.issuer)
-          .then(sessionInfo => {
-            console.log(sessionInfo)
-          })
-          .catch(error => {
-            console.error(error)
-          })
-      }
+      connect: (form, values) => solidApp.actions.connect(defaultSession, values.issuer),
+    },
+    view: {
+      session: defaultSession
     }
   })
+
+  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
 </script>

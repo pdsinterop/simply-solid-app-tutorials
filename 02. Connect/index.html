@@ -2,14 +2,14 @@
   import {
     getDefaultSession,
     login,
-  } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser"
+  } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
 
   const issuer = 'https://solidcommunity.net';
 
-  getDefaultSession()
-    .handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
-    .then(sessionInfo => {
+  const defaultSession = getDefaultSession()
 
+  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+    .then(sessionInfo => {
       if ( ! sessionInfo.isLoggedIn) {
         return login({
           oidcIssuer: issuer,
@@ -17,12 +17,6 @@
         })
       }
 
-      return true
-    })
-    .then(sessionInfo => {
-      console.log(sessionInfo)
-    })
-    .catch(error => {
-      console.error(error)
+      return sessionInfo
     })
 </script>
