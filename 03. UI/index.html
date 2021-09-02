@@ -1,0 +1,45 @@
+<main>
+  <form data-simply-command="connect">
+    <label>
+      <input name="issuer" type="text" value="https://solidcommunity.net">
+    </label>
+    <button>Connect</button>
+  </form>
+</main>
+
+<script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
+<script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
+<script type="module">
+  import {
+    getDefaultSession,
+    login,
+  } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser"
+
+  const solidApp = simply.app({
+    actions: {
+      connect : (issuer) => getDefaultSession()
+        .handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+        .then(sessionInfo => {
+          if ( ! sessionInfo.isLoggedIn) {
+            return login({
+              oidcIssuer: issuer,
+              redirectUrl: window.location.href,
+            })
+          }
+
+          return sessionInfo
+        })
+    },
+    commands: {
+      connect: (form, values) => {
+        solidApp.actions.connect(values.issuer)
+          .then(sessionInfo => {
+            console.log(sessionInfo)
+          })
+          .catch(error => {
+            console.error(error)
+          })
+      }
+    },
+  });
+</script>
