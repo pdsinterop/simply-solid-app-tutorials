@@ -1,0 +1,29 @@
+<script type="module">
+  import {
+    getDefaultSession,
+    login,
+  } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser"
+
+  const issuer = 'https://solidcommunity.net';
+
+  getDefaultSession()
+    .handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+    .then(sessionInfo => {
+
+      if ( ! sessionInfo.isLoggedIn) {
+        return login({
+          oidcIssuer: issuer,
+          redirectUrl: window.location.href,
+        })
+      }
+
+      return true
+    })
+    .then(response => {
+      /* Your application logic goes here */
+      console.log(response)
+    })
+    .catch(error => {
+      console.error(error)
+    })
+</script>
