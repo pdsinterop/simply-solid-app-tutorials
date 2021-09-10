@@ -20,10 +20,7 @@
 <script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
 <script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
 <script type="module">
-  import {
-    getDefaultSession,
-    login,
-  } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
+  import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
 
   const defaultSession = getDefaultSession()
 
@@ -31,7 +28,7 @@
     actions: {
       connect: (session, issuer) => {
         if (session.info && session.info.isLoggedIn === false) {
-          return login({
+          return session.login({
             oidcIssuer: issuer,
             redirectUrl: window.location.href,
           })
