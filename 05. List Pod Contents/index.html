@@ -79,7 +79,7 @@
 
         return solidApp.actions.fetchFromPod(session, webIdUrl.href)
           .then(text => parser.parse(text))
-          .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value);
+          .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value)
       },
     },
     commands: {
