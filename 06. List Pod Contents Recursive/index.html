@@ -1,0 +1,134 @@
+<main>
+  <section>
+    <form data-simply-command="connect">
+      <label>
+        <input name="issuer" type="text" value="https://solidcommunity.net">
+      </label>
+      <button>Connect</button>
+    </form>
+
+    <button data-simply-command="disconnect">Disconnect</button>
+  </section>
+
+  <section>
+    <h2>Session Data</h2>
+    <p>Session ID: <span data-simply-field="session.info.sessionId"></span></p>
+    <p>Logged in: <span data-simply-field="session.info.isLoggedIn"></span></p>
+  </section>
+
+  <section>
+    <h2>Pod Data</h2>
+    <p>
+      <label>Web ID: <input data-simply-field="session.info.webId"></label>
+      <button data-simply-command="readPod">Get Pod Data</button>
+    </p>
+    <!-- @TODO Add HTML to show the retrieved contents list. -->
+  </section>
+</main>
+
+<script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
+<script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
+<script type="module">
+  import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
+  import { Parser } from 'https://cdn.skypack.dev/n3'
+
+  const defaultSession = getDefaultSession()
+
+  const solidApp = simply.app({
+    actions: {
+      connect: (session, issuer) => {
+        if (session.info && session.info.isLoggedIn === false) {
+          return session.login({
+            oidcIssuer: issuer,
+            redirectUrl: window.location.href,
+          })
+        }
+
+        return session.info
+      },
+      disconnect: session => session.logout(),
+      fetchFromPod: (session, url) => session.fetch(url)
+        .then(response => response.text()),
+      getPodContents: (session, webIdUrl) => {
+        webIdUrl.hash = ''
+
+        return solidApp.actions.getPodUrl(session, webIdUrl)
+          .then(podUrl => solidApp.actions.listContent(session, podUrl))
+      },
+      getPodUrl: function (session, webIdUrl) {
+        const parser = new Parser({blankNodePrefix: '', baseIRI: webIdUrl.href})
+
+        return solidApp.actions.fetchFromPod(session, webIdUrl.href)
+          .then(text => parser.parse(text))
+          .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value)
+          .then(podUrl => podUrl.endsWith('/')
+            ? podUrl.slice(0, -1)
+            : podUrl
+          )
+      },
+      listContent: async (session, rootUrl) => {
+        const parser = new Parser({blankNodePrefix: '', baseIRI: rootUrl})
+
+        return solidApp.actions.fetchFromPod(session, rootUrl)
+          .then(text => parser.parse(text))
+          .then(solidApp.actions.transformQuadsToList)
+          .then(list => {
+            const tree = {}
+            for (const url in list) {
+              // We only want to recurse into resources that are a container but are not the root
+              const recurse =
+                url !== rootUrl
+                && typeof list[url]['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'] !== 'undefined'
+                && list[url]['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'].includes('http://www.w3.org/ns/ldp#Container')
+
+              if (recurse) {
+                tree[url] = solidApp.actions.listContent(session, url)
+              } else {
+                tree[url] = list[url]
+              }
+            }
+
+            return tree
+          })
+      },
+      transformQuadsToList: podData => {
+        const list = {}
+
+        podData.forEach(data => {
+          const subject = data.subject.value;
+          const predicate = data.predicate.value;
+          const object = data.object.value;
+
+          if ( ! list[subject]) {
+            list[subject] = {}
+          }
+
+          if ( ! list[subject][predicate]) {
+            list[subject][predicate] = []
+          }
+
+          list[subject][predicate].push(object)
+        })
+
+        return list
+      },
+    },
+    commands: {
+      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
+      disconnect: () => solidApp.actions.disconnect(solidApp.view.session),
+      readPod: () => {
+        const session = solidApp.view.session;
+        const webIdUrl = new URL(session.info.webId);
+
+        return solidApp.actions.getPodContents(session, webIdUrl)
+          .then(podData => solidApp.view.podData = JSON.parse(JSON.stringify(podData)))
+      }
+    },
+    view: {
+      podData: [],
+      session: defaultSession
+    }
+  })
+
+  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+</script>
