@@ -36,7 +36,7 @@
 
         return session.info
       },
-      disconnect: session => session.logout()
+      disconnect: session => session.logout(),
     },
     commands: {
       connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
