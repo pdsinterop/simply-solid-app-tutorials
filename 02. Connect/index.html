@@ -7,7 +7,7 @@
 
   defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
     .then(sessionInfo => {
-      if ( ! sessionInfo.isLoggedIn) {
+      if (sessionInfo.isLoggedIn === false) {
         return defaultSession.login({
           oidcIssuer: issuer,
           redirectUrl: window.location.href,

@@ -1,0 +1,144 @@
+<main class="pod-navigator">
+  <section class="session-info">
+    <form data-simply-command="connect">
+      <label>
+        <input name="issuer" type="text" value="https://solidcommunity.net">
+      </label>
+      <button>Connect</button>
+    </form>
+
+    <button data-simply-command="disconnect">Disconnect</button>
+
+    <h2>Session Data</h2>
+    <p>Session ID: <span data-simply-field="session.info.sessionId"></span></p>
+    <p>Logged in: <span data-simply-field="session.info.isLoggedIn"></span></p>
+    <p>
+      Web ID:
+      <span data-simply-field="session.info.webId"></span>
+      <button
+          data-simply-attributes="value"
+          data-simply-command="useWebIdAsSource"
+          data-simply-content="attributes"
+          data-simply-field="session.info.webId"
+      >Use WebId as Source</button>
+    </p>
+  </section>
+
+  <section class="pod">
+    <form data-simply-command="readPod">
+      <h2>Pod Data</h2>
+      <p>
+        <label>Pod Url: <input data-simply-field="pod.url"></label>
+        <button>Get Pod Data</button>
+      </p>
+    </form>
+    <table>
+      <thead>
+      <tr>
+        <th>Subject</th>
+        <th>Relationship</th>
+        <th>Value</th>
+      </tr>
+      </thead>
+      <tbody class="file-list" data-simply-list="pod.data">
+      <template>
+        <tr>
+          <td data-simply-field="subject.value">{data.subject}</td>
+          <td data-simply-field="predicate.value">{data.predicate}</td>
+          <td data-simply-field="object.value">{data.object}</td>
+        </tr>
+      </template>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<style>
+    /*=======( Generic Styling  )=============================================*/
+    body {
+        background: #ffd;
+    }
+
+    /*=======( Specific Styling )=============================================*/
+    .pod-navigator {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 1em;
+    }
+
+    .pod, .session-info {
+        background: white;
+        border: 1px solid lightgray;
+        color: #333;
+        margin-top: 1em;
+        min-width: calc(50% - 3em);
+        padding: 1em;
+    }
+
+    .session-info {
+        width: 100%;
+    }
+
+</style>
+
+<script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
+<script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
+<script type="module">
+  import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
+  import { Parser } from 'https://cdn.skypack.dev/n3'
+
+  const defaultSession = getDefaultSession()
+
+  const solidApp = simply.app({
+    actions: {
+      connect: (session, issuer) => {
+        if (session.info && session.info.isLoggedIn === false) {
+          return session.login({
+            oidcIssuer: issuer,
+            redirectUrl: window.location.href,
+          })
+        }
+
+        return session.info
+      },
+      disconnect: session => session.logout(),
+      fetchFromPod: (session, url) => session.fetch(url).then(response => response.text()),
+      getPodUrl: function (session, webIdUrl) {
+        const parser = new Parser({blankNodePrefix: '', baseIRI: webIdUrl.href})
+
+        return solidApp.actions.fetchFromPod(session, webIdUrl.href)
+          .then(text => parser.parse(text))
+          .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value)
+          .then(podUrl => {
+            if ( ! podUrl.endsWith('/')) {
+              podUrl += '/'
+            }
+
+            return podUrl
+          })
+      },
+    },
+    commands: {
+      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
+      disconnect: () => solidApp.actions.disconnect(solidApp.view.session),
+      readPod: (form, values) => {
+        const session = solidApp.view.session
+        const podUrl = solidApp.view.pod.url
+        const parser = new Parser({blankNodePrefix: '', baseIRI: podUrl})
+
+        return solidApp.actions.fetchFromPod(session, podUrl)
+          .then(text => parser.parse(text))
+          .then(podData => solidApp.view.pod.data = JSON.parse(JSON.stringify(podData)))
+      },
+      useWebIdAsSource: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pod.url = podUrl),
+    },
+    view: {
+      pod: {data: [], url: ''},
+      session: defaultSession
+    },
+  })
+
+  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+</script>

@@ -1,19 +1,45 @@
-<main>
-  <section>
+<main class="pod-navigator">
+  <section class="session-info">
     <form data-simply-command="connect">
       <label>
         <input name="issuer" type="text" value="https://solidcommunity.net">
       </label>
       <button>Connect</button>
     </form>
-  </section>
 
-  <section>
     <h2>Session Data</h2>
     <p>Session ID: <span data-simply-field="session.info.sessionId"></span></p>
     <p>Logged in: <span data-simply-field="session.info.isLoggedIn"></span></p>
+    <p>Web ID: <span data-simply-field="session.info.webId"></span></p>
   </section>
 </main>
+
+<style>
+    /*=======( Generic Styling  )=============================================*/
+    body {
+        background: #ffd;
+    }
+
+    /*=======( Specific Styling )=============================================*/
+    .pod-navigator {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 1em;
+    }
+
+    .session-info {
+        background: white;
+        border: 1px solid lightgray;
+        color: #333;
+        margin-top: 1em;
+        min-width: calc(50% - 3em);
+        padding: 1em;
+        width: 100%;
+    }
+
+</style>
 
 <script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
 <script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
@@ -36,11 +62,11 @@
       },
     },
     commands: {
-      connect: (form, values) => solidApp.actions.connect(defaultSession, values.issuer),
+      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
     },
     view: {
       session: defaultSession
-    }
+    },
   })
 
   defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
