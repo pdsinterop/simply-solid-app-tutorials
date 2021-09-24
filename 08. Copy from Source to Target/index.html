@@ -276,87 +276,54 @@
         const url = new URL(source)
         url.hash = ''
         const sourceUrl = url.href
-        const sourcePath = url.pathname
-
-        solidApp.actions.log(`[START] Copying <code>${source}</code> to ${target + sourcePath}`, level, 'info')
-
-        solidApp.actions.log(`Fetching information for ${sourceUrl}`, level)
+        const targetUrl = target + url.pathname
 
         return solidApp.actions.fetchFromPod(session, sourceUrl, 'blob')
           .then(blob => {
-            solidApp.actions.log(`Resource ${sourceUrl} is type <code>${blob.type}</code>`, level)
-
             return blob.text()
-              .then(content => {
-                if (blob.type.toLowerCase() !== 'text/turtle') {
-                  solidApp.actions.log(`As ${sourceUrl} is not <code>text/turtle</code> (but <code>${blob.type}</code>), we are assuming this is a file.`, level)
+              .then(async content => {
+                const type = blob.type.toLowerCase()
+                const resourceProperties = {hasChildren: false, level, sourceUrl, targetUrl, sourceType: type}
+                let children = []
 
-                  return solidApp.actions.writeToPod(session, target + sourcePath, content)
-                    .then(response => {
-                      if ( ! response.ok) {
-                        const message = `Could not copy "${sourceUrl}" to "${target + sourcePath}".<br>
-                                         <strong>Error: ${response.statusText} (${response.status})</strong>`
-                        solidApp.actions.log(message, level, 'error')
-                      } else {
-                        solidApp.actions.log(`[DONE] Copying (a) "${sourceUrl}" to "${target + sourcePath}"`, level, 'success')
-                      }
-                      return response
-                    })
-                } else {
-                  solidApp.actions.log(`Parsing <code>${blob.type}</code> content from ${sourceUrl}`, level)
-
-                  return Promise.resolve(content)
+                if (type === 'text/turtle') {
+                  children = await Promise.resolve(content)
                     .then(text => new Parser({blankNodePrefix: '', baseIRI: sourceUrl}).parse(text))
                     .then(solidApp.actions.formatList)
                     .then(list => {
                       // The first entry is always the root
                       const root = list.shift()
 
-                      const hasChildren = (root.resourceType === 'root'|| root.resourceType === 'folder')
+                      resourceProperties.hasChildren = (root.resourceType === 'root' || root.resourceType === 'folder')
                         && (root.contains && root.contains.length > 0)
 
-                      return solidApp.actions.writeToPod(session, target + sourcePath, content)
-                        .then(response => {
-                          if ( ! response.ok) {
-                            let message = `Could not copy "${sourceUrl}" to "${target + sourcePath}".<br>
-                                             <strong>Error: ${response.statusText} (${response.status})<strong>
-                                             `
-                            if (hasChildren) {
-                                message += `<br>Skipping children: <code>${JSON.stringify(root.contains)}</code>`
-                            }
-                            solidApp.actions.log(message, level, 'error')
-                          } else {
-                            solidApp.actions.log(`[DONE] Copying (b) "${sourceUrl}" to "${target + sourcePath}"`, level, 'success')
+                      if (resourceProperties.hasChildren) {
+                        children = root.contains
+                      }
 
-                            if (hasChildren) {
-                              solidApp.actions.log(`Copy children of "${sourceUrl}": <code>${JSON.stringify(root.contains)}</code>`, level)
-
-                              const childPromises = root.contains.map(childPath =>
-                                new Promise(() => solidApp.actions.copy(session, childPath, target, level + 1))
-                              )
-
-                              return Promise.all(childPromises)
-                                .then(results => {
-                                  console.log('CHILD RESULTS', results)
-                                  results.forEach(result => {
-                                    const status = 'success'
-                                    solidApp.actions.log(`[DONE] Copying (c) ${result.url}`, result.level, status)
-                                  })
-
-                                  return results
-                                })
-                            }
-                          }
-
-                          return response
-                        })
+                     return children
                     })
                 }
+
+                return solidApp.actions.writeToPod(session, targetUrl, content)
+                  .then(response => {
+                    Object.assign(response, resourceProperties)
+
+                    if (response.ok && resourceProperties.hasChildren) {
+                      const childPromises = children.map(childPath => {
+                        return solidApp.actions.copy(session, childPath, target, level + 1)
+                      })
+
+                      return Promise.allSettled(childPromises)
+                    }
+
+                    return response
+                  })
               })
           })
       },
       disconnect: session => session.logout(),
-      fetchFromPod: (session, url, type = 'text') => session.fetch(url).then(async response => response[type]()),
+      fetchFromPod: (session, url, type = 'text') => session.fetch(url).then(response => response[type]()),
       formatList: podData => {
         const list = []
         const propertiesList = {}
@@ -507,24 +474,29 @@
           .shift()
         // [END] @TODO
 
-        const sourcePromises = selectedSources.map(selectedSource =>
-          new Promise(() => solidApp.actions.copy(session, selectedSource, selectedTarget))
+        const sourcePromises = selectedSources.map(
+          selectedSource => {
+            solidApp.actions.log(`[START] Copying <code>${selectedSource}</code> to ${selectedTarget}`, 0, 'info')
+
+            return solidApp.actions.copy(session, selectedSource, selectedTarget)
+              .then(responses => Array.isArray(responses) ? responses : [responses])
+          }
         )
 
-        Promise.all(sourcePromises)
-          .then(results => {
-            console.log('RESULTS', results)
-
-            results.forEach(result => {
-              console.log(result)
-              if (result === undefined) {
-                console.error('Uh-oh!');
-                solidApp.actions.log(`[FAILED]`, 0, 'error')
-              } else {
-                solidApp.actions.log(`[DONE] Copying (d) ${result.url}`, 0, 'success')
-              }
+        Promise.allSettled(sourcePromises)
+          .then(promises => {
+            promises.forEach(promise => {
+              promise.value.forEach(response => {
+                if (response === undefined) {
+                  solidApp.actions.log(`[FAILED]`, 0, 'error')
+                } else {
+                  solidApp.actions.log(`[DONE] Copying "${response.url}" (from "${response.sourceUrl}")`, 0, 'success')
+                }
+              })
             })
-          }).catch(error => console.error('!!! ADRIAaaaaaaaaN !!!', error))
+          })
+          .then(() => solidApp.actions.log(`[DONE] Copying selected ${JSON.stringify(selectedSources)} to "${selectedTarget}"`, 0, 'success'))
+          .catch(error => console.error('!!! ADRIAaaaaaaaaN !!!', error))
       },
       useWebIdAsSource: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.source.url = podUrl),
       useWebIdAsTarget: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.target.url = podUrl),
