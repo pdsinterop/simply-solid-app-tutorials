@@ -102,7 +102,7 @@
 
   <section class="migrator">
     <button data-simply-command="copySelected">Copy</button>
-    <ul class="status-log" data-simply-list="status.log">
+    <ul class="status-log" data-simply-list="log">
       <template>
         <li data-simply-attributes="class"
             data-simply-content="attributes"
@@ -254,21 +254,21 @@
   import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
   import { Parser } from 'https://cdn.skypack.dev/n3'
 
-  const defaultSession = getDefaultSession()
+  const solidSession = getDefaultSession()
 
   const solidApp = simply.app({
     actions: {
-      connect: (session, issuer) => {
-        if (session.info && session.info.isLoggedIn === false) {
-          return session.login({
+      connect: issuer => {
+        if (solidSession.info && solidSession.info.isLoggedIn === false) {
+          return solidSession.login({
             oidcIssuer: issuer,
             redirectUrl: window.location.href,
           })
         }
 
-        return session.info
+        return solidSession.info
       },
-      copy: (session, source, target, level = 0) => {
+      copy: (source, target, level = 0) => {
         if (target.endsWith('/')) {
           target = target.slice(0, -1)
         }
@@ -278,7 +278,7 @@
         const sourceUrl = url.href
         const targetUrl = target + url.pathname
 
-        return solidApp.actions.fetchFromPod(session, sourceUrl, 'blob')
+        return solidApp.actions.fetchFromPod(sourceUrl, 'blob')
           .then(blob => {
             return blob.text()
               .then(async content => {
@@ -305,13 +305,13 @@
                     })
                 }
 
-                return solidApp.actions.writeToPod(session, targetUrl, content)
+                return solidApp.actions.writeToPod(targetUrl, content)
                   .then(response => {
                     Object.assign(response, resourceProperties)
 
                     if (response.ok && resourceProperties.hasChildren) {
                       const childPromises = children.map(childPath => {
-                        return solidApp.actions.copy(session, childPath, target, level + 1)
+                        return solidApp.actions.copy(childPath, target, level + 1)
                       })
 
                       return Promise.allSettled(childPromises)
@@ -322,8 +322,8 @@
               })
           })
       },
-      disconnect: session => session.logout(),
-      fetchFromPod: (session, url, type = 'text') => session.fetch(url).then(response => response[type]()),
+      disconnect: () => solidSession.logout(),
+      fetchFromPod: (url, type = 'text') => solidSession.fetch(url).then(response => response[type]()),
       formatList: podData => {
         const list = []
         const propertiesList = {}
@@ -410,10 +410,10 @@
           return item
         })
       },
-      getPodUrl: function (session, webIdUrl) {
+      getPodUrl: webIdUrl => {
         const parser = new Parser({blankNodePrefix: '', baseIRI: webIdUrl.href})
 
-        return solidApp.actions.fetchFromPod(session, webIdUrl.href)
+        return solidApp.actions.fetchFromPod(webIdUrl.href)
           .then(text => parser.parse(text))
           .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value)
           .then(podUrl => {
@@ -428,20 +428,19 @@
         message,
         type: `${type} indent-${Math.min(indent, 9)}`
       }),
-      writeToPod: (session, url, content) => session.fetch(url, {
+      writeToPod: (url, content) => solidSession.fetch(url, {
         body: content,
         method: 'PUT'
       }),
     },
     commands: {
-      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
-      disconnect: () => solidApp.actions.disconnect(solidApp.view.session),
+      connect: (form, values) => solidApp.actions.connect(values.issuer),
+      disconnect: () => solidApp.actions.disconnect(),
       readPod: (form, values) => {
-        const session = solidApp.view.session
         const podUrl = solidApp.view.pods[values.pod].url
         const parser = new Parser({blankNodePrefix: '', baseIRI: podUrl})
 
-        return solidApp.actions.fetchFromPod(session, podUrl)
+        return solidApp.actions.fetchFromPod(podUrl)
           .then(text => parser.parse(text))
           .then(solidApp.actions.formatList)
           .then(podData => podData.sort((a, b) => {
@@ -458,8 +457,6 @@
           .then(podData => solidApp.view.pods[values.pod].data = JSON.parse(JSON.stringify(podData)))
       },
       copySelected: () => {
-        const session = solidApp.view.session
-
         // [START] @TODO: Use data-simply-collection="" / simply.collect() rather than value grabbing used below
         const sources = document.querySelector('.source-pod [data-simply-collection]').elements
         const targets = document.querySelector('.target-pod [data-simply-collection]').elements
@@ -478,7 +475,7 @@
           selectedSource => {
             solidApp.actions.log(`[START] Copying <code>${selectedSource}</code> to ${selectedTarget}`, 0, 'info')
 
-            return solidApp.actions.copy(session, selectedSource, selectedTarget)
+            return solidApp.actions.copy(selectedSource, selectedTarget)
               .then(responses => Array.isArray(responses) ? responses : [responses])
           }
         )
@@ -498,8 +495,8 @@
           .then(() => solidApp.actions.log(`[DONE] Copying selected ${JSON.stringify(selectedSources)} to "${selectedTarget}"`, 0, 'success'))
           .catch(error => console.error('!!! ADRIAaaaaaaaaN !!!', error))
       },
-      useWebIdAsSource: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.source.url = podUrl),
-      useWebIdAsTarget: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.target.url = podUrl),
+      useWebIdAsSource: (button, webId) => solidApp.actions.getPodUrl(new URL(webId)).then(podUrl => solidApp.view.pods.source.url = podUrl),
+      useWebIdAsTarget: (button, webId) => solidApp.actions.getPodUrl(new URL(webId)).then(podUrl => solidApp.view.pods.target.url = podUrl),
     },
     view: {
       log: [],
@@ -507,9 +504,9 @@
         source: {data: [], url: ''},
         target: {data: [], url: ''},
       },
-      session: defaultSession,
+      session: solidSession,
     },
   })
 
-  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+  solidSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
 </script>

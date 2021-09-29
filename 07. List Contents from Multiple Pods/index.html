@@ -203,22 +203,22 @@
   import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
   import { Parser } from 'https://cdn.skypack.dev/n3'
 
-  const defaultSession = getDefaultSession()
+  const solidSession = getDefaultSession()
 
   const solidApp = simply.app({
     actions: {
-      connect: (session, issuer) => {
-        if (session.info && session.info.isLoggedIn === false) {
-          return session.login({
+      connect: issuer => {
+        if (solidSession.info && solidSession.info.isLoggedIn === false) {
+          return solidSession.login({
             oidcIssuer: issuer,
             redirectUrl: window.location.href,
           })
         }
 
-        return session.info
+        return solidSession.info
       },
-      disconnect: session => session.logout(),
-      fetchFromPod: (session, url) => session.fetch(url).then(response => response.text()),
+      disconnect: () => solidSession.logout(),
+      fetchFromPod: url => solidSession.fetch(url).then(response => response.text()),
       formatList: podData => {
         const list = []
         const propertiesList = {}
@@ -305,10 +305,10 @@
           return item
         })
       },
-      getPodUrl: function (session, webIdUrl) {
+      getPodUrl: webIdUrl => {
         const parser = new Parser({blankNodePrefix: '', baseIRI: webIdUrl.href})
 
-        return solidApp.actions.fetchFromPod(session, webIdUrl.href)
+        return solidApp.actions.fetchFromPod(webIdUrl.href)
           .then(text => parser.parse(text))
           .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value)
           .then(podUrl => {
@@ -321,14 +321,13 @@
       },
     },
     commands: {
-      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
-      disconnect: () => solidApp.actions.disconnect(solidApp.view.session),
+      connect: (form, values) => solidApp.actions.connect(values.issuer),
+      disconnect: () => solidApp.actions.disconnect(),
       readPod: (form, values) => {
-        const session = solidApp.view.session
         const podUrl = solidApp.view.pods[values.pod].url
         const parser = new Parser({blankNodePrefix: '', baseIRI: podUrl})
 
-        return solidApp.actions.fetchFromPod(session, podUrl)
+        return solidApp.actions.fetchFromPod(podUrl)
           .then(text => parser.parse(text))
           .then(solidApp.actions.formatList)
           .then(podData => podData.sort((a, b) => {
@@ -347,17 +346,17 @@
       showSelected: (form, values) => {
         alert(`You selected:\n${Array.isArray(values.path) ? values.path.join('\n') : values.path ?? 'nothing'}`)
       },
-      useWebIdAsSource: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.source.url = podUrl),
-      useWebIdAsTarget: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.target.url = podUrl),
+      useWebIdAsSource: (button, webId) => solidApp.actions.getPodUrl(new URL(webId)).then(podUrl => solidApp.view.pods.source.url = podUrl),
+      useWebIdAsTarget: (button, webId) => solidApp.actions.getPodUrl(new URL(webId)).then(podUrl => solidApp.view.pods.target.url = podUrl),
     },
     view: {
       pods: {
         source: {data: [], url: ''},
         target: {data: [], url: ''},
       },
-      session: defaultSession,
+      session: solidSession,
     },
   })
 
-  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+  solidSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
 </script>

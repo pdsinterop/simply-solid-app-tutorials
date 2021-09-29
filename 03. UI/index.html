@@ -46,28 +46,28 @@
 <script type="module">
   import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
 
-  const defaultSession = getDefaultSession()
+  const solidSession = getDefaultSession()
 
   const solidApp = simply.app({
     actions: {
-      connect: (session, issuer) => {
-        if (session.info && session.info.isLoggedIn === false) {
-          return session.login({
+      connect: issuer => {
+        if (solidSession.info && solidSession.info.isLoggedIn === false) {
+          return solidSession.login({
             oidcIssuer: issuer,
             redirectUrl: window.location.href,
           })
         }
 
-        return session.info
+        return solidSession.info
       },
     },
     commands: {
-      connect: (form, values) => solidApp.actions.connect(solidApp.view.session, values.issuer),
+      connect: (form, values) => solidApp.actions.connect(values.issuer),
     },
     view: {
-      session: defaultSession,
+      session: solidSession,
     },
   })
 
-  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+  solidSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
 </script>

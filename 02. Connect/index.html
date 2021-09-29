@@ -3,12 +3,12 @@
 
   const issuer = 'https://solidcommunity.net';
 
-  const defaultSession = getDefaultSession()
+  const solidSession = getDefaultSession()
 
-  defaultSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+  solidSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
     .then(sessionInfo => {
       if (sessionInfo.isLoggedIn === false) {
-        return defaultSession.login({
+        return solidSession.login({
           oidcIssuer: issuer,
           redirectUrl: window.location.href,
         })
