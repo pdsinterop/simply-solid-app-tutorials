@@ -301,7 +301,7 @@
                         children = root.contains
                       }
 
-                     return children
+                      return children
                     })
                 }
 
@@ -483,7 +483,7 @@
         Promise.allSettled(sourcePromises)
           .then(promises => promises.forEach(promise => {
               promise.value.forEach(response => {
-              response = response.value ? response.value : response
+                response = response.value ? response.value : response
                 if (response === undefined) {
                   solidApp.actions.log(`[FAILED]`, 0, 'error')
                 } else {
