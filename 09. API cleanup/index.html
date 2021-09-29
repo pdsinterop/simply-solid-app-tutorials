@@ -1,0 +1,519 @@
+<main class="pod-navigator">
+  <section class="session-info">
+    <form data-simply-command="connect">
+      <label>
+        <input name="issuer" type="text" value="https://solidcommunity.net">
+      </label>
+      <button>Connect</button>
+    </form>
+
+    <button data-simply-command="disconnect">Disconnect</button>
+
+    <h2>Session Data</h2>
+    <p>Session ID: <span data-simply-field="session.info.sessionId"></span></p>
+    <p>Logged in: <span data-simply-field="session.info.isLoggedIn"></span></p>
+    <p>
+      Web ID:
+      <span data-simply-field="session.info.webId"></span>
+      <button
+          data-simply-attributes="value"
+          data-simply-command="useWebIdAsSource"
+          data-simply-content="attributes"
+          data-simply-field="session.info.webId"
+      >Use WebId as Source</button>
+      <button
+          data-simply-attributes="value"
+          data-simply-command="useWebIdAsTarget"
+          data-simply-content="attributes"
+          data-simply-field="session.info.webId"
+      >Use WebId as Target</button>
+    </p>
+  </section>
+
+  <section class="pod source-pod">
+    <form data-simply-command="listPodContent">
+      <h2>Pod Data</h2>
+      <input type="hidden" name="pod" value="source">
+      <p>
+        <label>Pod Url: <input data-simply-field="pods.source.url"></label>
+        <button>Get Pod Data</button>
+      </p>
+    </form>
+    <form data-simply-collection="source">
+      <ul class="file-list" data-simply-list="pods.source.data">
+        <template>
+          <li data-simply-attributes="class"
+              data-simply-content="attributes"
+              data-simply-field="resourceType"
+          >
+            <label>
+              <input
+                  data-simply-attributes="value"
+                  data-simply-content="attributes"
+                  data-simply-element="source-element"
+                  data-simply-field="url"
+                  name="path"
+                  type="checkbox"
+                  value=""
+              >
+              <span class="item-name" data-simply-field="name"></span>
+            </label>
+            <span class="item-size" data-simply-field="size"></span>
+          </li>
+        </template>
+      </ul>
+    </form>
+  </section>
+
+  <section class="pod target-pod">
+    <form data-simply-command="listPodContent">
+      <h2>Pod Data</h2>
+      <input type="hidden" name="pod" value="target">
+      <p>
+        <label>Pod Url: <input data-simply-field="pods.target.url"></label>
+        <button>Get Pod Data</button>
+      </p>
+    </form>
+    <form data-simply-collection="target">
+      <ul class="file-list" data-simply-list="pods.target.data">
+        <template>
+          <li data-simply-attributes="class"
+              data-simply-content="attributes"
+              data-simply-element="target-element"
+              data-simply-field="resourceType"
+          >
+            <label>
+              <input
+                  data-simply-attributes="value"
+                  data-simply-content="attributes"
+                  data-simply-field="url"
+                  name="path"
+                  type="radio"
+                  value=""
+              >
+              <span class="item-name" data-simply-field="name"></span>
+            </label>
+            <span class="item-size" data-simply-field="size"></span>
+          </li>
+        </template>
+      </ul>
+    </form>
+  </section>
+
+  <section class="migrator">
+    <button data-simply-command="copySelected">Copy</button>
+    <ul class="status-log" data-simply-list="log">
+      <template>
+        <li data-simply-attributes="class"
+            data-simply-content="attributes"
+            data-simply-field="type"
+        >
+          <span data-simply-field="message"></span>
+        </li>
+      </template>
+    </ul>
+  </section>
+</main>
+
+<style>
+    /*=======( Generic Styling  )=============================================*/
+    body {
+        background: #ffd;
+    }
+
+    /*=======( Specific Styling )=============================================*/
+    .pod-navigator {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin: 1em;
+    }
+
+    .migrator,
+    .pod,
+    .session-info {
+        background: white;
+        border: 1px solid lightgray;
+        color: #333;
+        margin-top: 1em;
+        min-width: calc(50% - 3em);
+        padding: 1em;
+    }
+
+    .migrator,
+    .session-info {
+        width: 100%;
+    }
+
+    /*=======( File List )====================================================*/
+    .file-list {
+        padding: 0;
+        list-style: none;
+        margin: 1em;
+    }
+
+    /*-------( Generic List Items )-------------------------------------------*/
+    .file-list li {
+        border: 1px solid;
+        line-height: 2em;
+        margin: 0;
+    }
+
+    .file-list li:hover {
+        background: #ff9;
+    }
+
+    .file-list label {
+        display: inline-block;
+        width: calc(100% - 4em);
+    }
+
+    .file-list .item-size::after {
+        content: "kb"
+    }
+
+    .file-list .item-size:empty::after {
+        content: "(?)"
+    }
+
+    .file-list .item-name {
+        display: inline-block;
+        max-width: calc(100% - 2em);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    /*-------( Specific List Items )------------------------------------------*/
+
+    /*.......( Item Type Account )............................................*/
+    .file-list .account {
+        display: none;
+    }
+
+    /*.......( Item Types Folder and Root )...................................*/
+    .file-list .root {
+        border: none;
+    }
+
+    .file-list .folder .item-name::after,
+    .file-list .root .item-name::after {
+        content: "/"
+    }
+
+    .file-list .folder .item-size,
+    .file-list .root .item-size {
+        display: none;
+    }
+
+    /*.......( Item Type File )...............................................*/
+    .target-pod .file-list .file {
+        display: none;
+    }
+
+    /*=======( Status Log )===================================================*/
+    .status-log > li {
+        border: 1px solid;
+    }
+
+    .status-log .debug {
+        color: #999;
+    }
+
+    .status-log .error {
+        color: red;
+        background: #f001;
+    }
+
+    .status-log .info {
+        color: #0bf;
+        background: #0bf2;
+    }
+
+    .status-log .success {
+        color: #3c3;
+        background: #3c32;
+    }
+
+    .status-log .indent-1 {text-indent: 1em;}
+    .status-log .indent-2 {text-indent: 2em;}
+    .status-log .indent-3 {text-indent: 3em;}
+    .status-log .indent-4 {text-indent: 4em;}
+    .status-log .indent-5 {text-indent: 5em;}
+    .status-log .indent-6 {text-indent: 6em;}
+    .status-log .indent-7 {text-indent: 7em;}
+    .status-log .indent-8 {text-indent: 8em;}
+    .status-log .indent-9 {text-indent: 9em;}
+</style>
+
+<script src="https://cdn.simplyedit.io/1/simply-edit.js" data-simply-storage="none"></script>
+<script src="https://unpkg.com/simplyview/dist/simply.everything.js"></script>
+<script type="module">
+  import { getDefaultSession } from 'https://cdn.skypack.dev/@inrupt/solid-client-authn-browser'
+  import { Parser } from 'https://cdn.skypack.dev/n3'
+
+  const solidSession = getDefaultSession()
+
+  const solidApi = {
+    connect: issuer => {
+      if (solidSession.info && solidSession.info.isLoggedIn === false) {
+        return solidSession.login({
+          oidcIssuer: issuer,
+          redirectUrl: window.location.href,
+        })
+      }
+
+      return solidSession.info
+    },
+    copy: (source, target, level = 0) => {
+      if (target.endsWith('/')) {
+        target = target.slice(0, -1)
+      }
+
+      const url = new URL(source)
+      url.hash = ''
+      const sourceUrl = url.href
+      const targetUrl = target + url.pathname
+
+      return solidApi.fetchFromPod(sourceUrl, 'blob')
+        .then(blob => {
+          return blob.text()
+            .then(async content => {
+              const type = blob.type.toLowerCase()
+              const resourceProperties = {hasChildren: false, level, sourceUrl, targetUrl, sourceType: type}
+              let children = []
+
+              if (type === 'text/turtle') {
+                children = await Promise.resolve(content)
+                  .then(text => new Parser({blankNodePrefix: '', baseIRI: sourceUrl}).parse(text))
+                  .then(solidApi.formatList)
+                  .then(list => {
+                    // The first entry is always the root
+                    const root = list.shift()
+
+                    resourceProperties.hasChildren = (root.resourceType === 'root' || root.resourceType === 'folder')
+                      && (root.contains && root.contains.length > 0)
+
+                    if (resourceProperties.hasChildren) {
+                      children = root.contains
+                    }
+
+                    return children
+                  })
+              }
+
+              return solidApi.writeToPod(targetUrl, content)
+                .then(response => {
+                  Object.assign(response, resourceProperties)
+
+                  if (response.ok && resourceProperties.hasChildren) {
+                    const childPromises = children.map(childPath => {
+                      return solidApi.copy(childPath, target, level + 1)
+                    })
+
+                    return Promise.allSettled(childPromises)
+                  }
+
+                  return response
+                })
+            })
+        })
+    },
+    disconnect: () => solidSession.logout(),
+    fetchFromPod: (url, type = 'text') => solidSession.fetch(url).then(response => response[type]()),
+    formatList: podData => {
+      const list = []
+      const propertiesList = {}
+
+      podData.forEach(data => {
+        const subject = data.subject.value
+        const predicate = data.predicate.value
+        const object = data.object.value
+
+        if ( ! propertiesList[subject]) {
+          propertiesList[subject] = {}
+        }
+
+        if ( ! propertiesList[subject][predicate]) {
+          propertiesList[subject][predicate] = []
+        }
+
+        propertiesList[subject][predicate].push(object)
+      })
+
+      // These types can have multiple values, all others _should_ have a single value
+      const multipleValues = {
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#type': 'types',
+        'http://www.w3.org/ns/ldp#contains': 'contains',
+      }
+      const singularValues = {
+        'http://purl.org/dc/terms/modified': 'modified', // last modification as timestamp
+        'http://www.w3.org/ns/posix/stat#mtime': 'mtime', // last modification in Unix time
+        'http://www.w3.org/ns/posix/stat#size': 'size', // in bits
+      }
+
+      for (const [url, properties] of Object.entries(propertiesList)) {
+        const resource = {properties, url}
+
+        for (const [name, values] of Object.entries(properties)) {
+          if (typeof multipleValues[name] !== 'undefined') {
+            resource[multipleValues[name]] = values
+          }
+
+          if (typeof singularValues[name] !== 'undefined') {
+            resource[singularValues[name]] = values.shift()
+          }
+        }
+
+        if (properties['http://www.w3.org/ns/solid/terms#account'] !== undefined) {
+          resource.resourceType = 'account'
+        } else if (properties['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'] !== undefined) {
+          const types = properties['http://www.w3.org/1999/02/22-rdf-syntax-ns#type']
+          if (types.includes('http://www.w3.org/ns/ldp#Container') || types.includes('http://www.w3.org/ns/ldp#BasicContainer')) {
+            resource.resourceType = 'folder'
+          } else if (types.includes('http://www.w3.org/ns/ldp#Resource') || types.includes('http://www.w3.org/ns/ldp#NonRDFSource')) {
+            resource.resourceType = 'file'
+          } else {
+            resource.resourceType = 'other'
+          }
+        } else {
+          resource.resourceType = 'unknown'
+        }
+
+        list.push(resource)
+      }
+
+      // After sorting, the first entry is always the root
+      list[0].resourceType = 'root'
+
+      let rootRegExp
+
+      return list.map(item => {
+        if ( ! rootRegExp && item.resourceType === 'root') {
+          rootRegExp = new RegExp(`^${item.url}`, 'g')
+        }
+
+        if (item.size) {
+          // convert bits to kilobytes
+          item.size = `${(item.size * 0.000125).toFixed(2)}`
+        }
+
+        let name = item.url.replace(rootRegExp, '')
+
+        item.name = name.endsWith('/')
+          ? name.slice(0, -1)
+          : name
+
+        return item
+      })
+    },
+    getPodUrl: webIdUrl => {
+      const parser = new Parser({blankNodePrefix: '', baseIRI: webIdUrl.href})
+
+      return solidApi.fetchFromPod(webIdUrl.href)
+        .then(text => parser.parse(text))
+        .then(quads => quads.find(quad => quad.predicate.value.includes('pim/space#storage')).object.value)
+        .then(podUrl => {
+          if ( ! podUrl.endsWith('/')) {
+            podUrl += '/'
+          }
+
+          return podUrl
+        })
+    },
+    listPodContent: podUrl => {
+      const parser = new Parser({blankNodePrefix: '', baseIRI: podUrl})
+
+      return solidApi.fetchFromPod(podUrl)
+        .then(text => parser.parse(text))
+        .then(solidApi.formatList)
+        .then(podData => podData.sort((a, b) => {
+            // Sort root first, folders before files, files by alphabet
+            if (a.resourceType === 'root') {
+              return -1
+            } else if (a.resourceType !== b.resourceType) {
+              return (a.resourceType === 'folder') <= (b.resourceType === 'folder')
+            } else {
+              return a.name.localeCompare(b.name)
+            }
+          })
+        )
+    },
+    writeToPod: (url, content) => solidSession.fetch(url, {
+      body: content,
+      method: 'PUT'
+    }),
+  }
+
+  const solidApp = simply.app({
+    actions: { // Actions should all return a Promise
+      log: (message, indent = 0, type = 'debug') => solidApp.view.log.push({
+        message,
+        type: `${type} indent-${Math.min(indent, 9)}`
+      }),
+      setPodUrl: (webId, pod) => solidApi.getPodUrl(new URL(webId)).then(podUrl => solidApp.view.pods[pod].url = podUrl),
+    },
+    commands: {
+      connect: (form, values) => solidApi.connect(values.issuer),
+      disconnect: () => solidApi.disconnect(),
+      listPodContent: (form, values) => {
+        const podUrl = solidApp.view.pods[values.pod].url
+        return solidApi.listPodContent(podUrl)
+          .then(podData => solidApp.view.pods[values.pod].data = JSON.parse(JSON.stringify(podData)))
+      },
+      copySelected: () => {
+        // [START] @TODO: Use data-simply-collection="" / simply.collect() rather than value grabbing used below
+        const sources = document.querySelector('.source-pod [data-simply-collection]').elements
+        const targets = document.querySelector('.target-pod [data-simply-collection]').elements
+
+        const selectedSources = Array.from(sources)
+          .filter(element => element.checked)
+          .map(element => element.value)
+
+        const selectedTarget = Array.from(targets)
+          .filter(element => element.checked)
+          .map(element => element.value)
+          .shift()
+        // [END] @TODO
+
+        const sourcePromises = selectedSources.map(
+          selectedSource => {
+            solidApp.actions.log(`[START] Copying <code>${selectedSource}</code> to ${selectedTarget}`, 0, 'info')
+
+            return solidApi.copy(selectedSource, selectedTarget)
+              .then(responses => Array.isArray(responses) ? responses : [responses])
+          }
+        )
+
+        Promise.allSettled(sourcePromises)
+          .then(promises => promises.forEach(promise => {
+              promise.value.forEach(response => {
+                response = response.value ? response.value : response
+                if (response === undefined) {
+                  solidApp.actions.log(`[FAILED]`, 0, 'error')
+                } else {
+                  solidApp.actions.log(`[DONE] Copying "${response.url}" (from "${response.sourceUrl}")`, 0, 'debug')
+                }
+              })
+            })
+          )
+          .then(() => solidApp.actions.log(`[DONE] Copying selected ${JSON.stringify(selectedSources)} to "${selectedTarget}"`, 0, 'success'))
+          .catch(error => console.error('!!! ADRIAaaaaaaaaN !!!', error))
+      },
+      useWebIdAsSource: (button, webId) => solidApp.actions.setPodUrl(webId, 'source'),
+      useWebIdAsTarget: (button, webId) => solidApp.actions.setPodUrl(webId, 'target'),
+    },
+    view: {
+      log: [],
+      pods: {
+        source: {data: [], url: ''},
+        target: {data: [], url: ''},
+      },
+      session: solidSession,
+    },
+  })
+
+  solidSession.handleIncomingRedirect({url: window.location.href, restorePreviousSession: true})
+</script>
