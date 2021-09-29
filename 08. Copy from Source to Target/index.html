@@ -424,7 +424,7 @@
             return podUrl
           })
       },
-      log: (message, indent = 0, type = 'debug') => solidApp.view.status.log.push({
+      log: (message, indent = 0, type = 'debug') => solidApp.view.log.push({
         message,
         type: `${type} indent-${Math.min(indent, 9)}`
       }),
@@ -484,17 +484,17 @@
         )
 
         Promise.allSettled(sourcePromises)
-          .then(promises => {
-            promises.forEach(promise => {
+          .then(promises => promises.forEach(promise => {
               promise.value.forEach(response => {
+              response = response.value ? response.value : response
                 if (response === undefined) {
                   solidApp.actions.log(`[FAILED]`, 0, 'error')
                 } else {
-                  solidApp.actions.log(`[DONE] Copying "${response.url}" (from "${response.sourceUrl}")`, 0, 'success')
+                  solidApp.actions.log(`[DONE] Copying "${response.url}" (from "${response.sourceUrl}")`, 0, 'debug')
                 }
               })
             })
-          })
+          )
           .then(() => solidApp.actions.log(`[DONE] Copying selected ${JSON.stringify(selectedSources)} to "${selectedTarget}"`, 0, 'success'))
           .catch(error => console.error('!!! ADRIAaaaaaaaaN !!!', error))
       },
@@ -502,6 +502,7 @@
       useWebIdAsTarget: (button, webId) => solidApp.actions.getPodUrl(solidApp.view.session, new URL(webId)).then(podUrl => solidApp.view.pods.target.url = podUrl),
     },
     view: {
+      log: [],
       pods: {
         source: {data: [], url: ''},
         target: {data: [], url: ''},
